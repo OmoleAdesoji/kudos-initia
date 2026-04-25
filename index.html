@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kudos — Appreciate on Initia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Mono&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#060608;--card:#0f0f14;--input:#16161e;--border:#1e1e2a;--accent:#f59e0b;--adim:rgba(245,158,11,0.1);--text:#f0f0f8;--muted:#6b6b80;--dim:#3a3a50;--green:#22c55e;--red:#ef4444;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
+input,textarea,button{font-family:inherit;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.3)}50%{box-shadow:0 0 16px 4px rgba(245,158,11,0.2)}}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(245,158,11,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.syne{font-family:'Syne',sans-serif;}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+<div style="max-width:560px;margin:0 auto;padding:0 16px 80px;position:relative;">
+
+  <!-- glow -->
+  <div style="position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(245,158,11,0.05) 0%,transparent 70%);pointer-events:none;z-index:0;"></div>
+
+  <!-- Header -->
+  <header style="display:flex;justify-content:space-between;align-items:center;padding:32px 0 40px;animation:fadeUp .5s ease;">
+    <div>
+      <div class="syne" style="font-size:28px;font-weight:800;letter-spacing:-0.03em;">kudos<span style="color:var(--accent);">.</span></div>
+      <div class="mono" style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:2px;">appreciate on initia</div>
+    </div>
+    <button id="walletBtn" onclick="handleConnect()"
+      style="background:var(--accent);border:none;border-radius:8px;padding:10px 20px;color:#000;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;animation:glow 3s infinite;">
+      Connect Wallet
+    </button>
+  </header>
+
+  <!-- Error banner -->
+  <div id="errBanner" class="hidden" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+    <span id="errText" class="mono" style="font-size:12px;color:var(--red);"></span>
+    <button onclick="hideErr()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;margin-left:12px;">✕</button>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:24px;">
+    <button id="tabSend" onclick="switchTab('send')"
+      style="flex:1;background:var(--accent);border:none;border-radius:9px;padding:10px;color:#000;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
+      🫶 Send Kudos
+    </button>
+    <button id="tabReceived" onclick="switchTab('received')"
+      style="flex:1;background:transparent;border:none;border-radius:9px;padding:10px;color:var(--muted);font-family:'Syne',sans-serif;font-size:13px;cursor:pointer;">
+      📥 View Received
+    </button>
+  </div>
+
+  <!-- Send Panel -->
+  <div id="sendPanel">
+    <div id="connectHint" style="background:var(--adim);border:1px dashed rgba(245,158,11,0.4);border-radius:12px;padding:20px;text-align:center;margin-bottom:20px;">
+      <p style="color:var(--accent);font-size:14px;">Connect your Keplr or Leap wallet to send kudos on-chain</p>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;">
+
+      <!-- Recipient -->
+      <div style="margin-bottom:20px;">
+        <label class="mono" style="display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;">To</label>
+        <div style="position:relative;">
+          <input id="recipientInput" type="text" placeholder="satoshi.init or init1abc..."
+            oninput="onRecipientChange()"
+            style="width:100%;background:var(--input);border:1px solid var(--border);border-radius:10px;padding:13px 40px 13px 14px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;outline:none;" disabled/>
+          <span id="resolveIcon" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);"></span>
+        </div>
+        <p id="resolvedAddr" class="mono" style="font-size:11px;color:var(--green);margin-top:6px;display:none;"></p>
+        <p id="resolveErr"   class="mono" style="font-size:11px;color:var(--red);margin-top:6px;display:none;"></p>
+      </div>
+
+      <!-- Message -->
+      <div style="margin-bottom:20px;">
+        <label class="mono" style="display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;">Message</label>
+        <textarea id="msgInput" rows="3" maxlength="200"
+          placeholder="You shipped that feature like a legend 🔥"
+          oninput="document.getElementById('charCount').textContent=this.value.length+'/200'"
+          style="width:100%;background:var(--input);border:1px solid var(--border);border-radius:10px;padding:13px 14px;color:var(--text);font-size:14px;outline:none;resize:none;line-height:1.6;" disabled></textarea>
+        <div id="charCount" class="mono" style="text-align:right;font-size:10px;color:var(--dim);margin-top:4px;">0/200</div>
+      </div>
+
+      <!-- Amount -->
+      <div style="margin-bottom:28px;">
+        <label class="mono" style="display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px;">Amount (INIT)</label>
+        <div style="display:flex;gap:8px;">
+          <button onclick="setAmt('0.1')" class="amtBtn mono" data-v="0.1" style="flex:1;background:var(--adim);border:1px solid rgba(245,158,11,0.4);border-radius:8px;padding:10px;color:var(--accent);font-size:13px;cursor:pointer;" disabled>0.1</button>
+          <button onclick="setAmt('0.5')" class="amtBtn mono" data-v="0.5" style="flex:1;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--muted);font-size:13px;cursor:pointer;" disabled>0.5</button>
+          <button onclick="setAmt('1')"   class="amtBtn mono" data-v="1"   style="flex:1;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--muted);font-size:13px;cursor:pointer;" disabled>1</button>
+          <button onclick="setAmt('5')"   class="amtBtn mono" data-v="5"   style="flex:1;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--muted);font-size:13px;cursor:pointer;" disabled>5</button>
+        </div>
+      </div>
+
+      <!-- Send button -->
+      <button id="sendBtn" onclick="handleSend()"
+        style="width:100%;background:var(--accent);border:none;border-radius:12px;padding:16px;color:#000;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
+        Connect Wallet to Send
+      </button>
+    </div>
+
+    <!-- How it works -->
+    <div style="margin-top:16px;padding:16px 20px;background:var(--card);border:1px solid var(--border);border-radius:12px;">
+      <p class="mono" style="font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;">How it works</p>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;gap:10px;"><span>🔗</span><span style="font-size:13px;color:var(--muted);line-height:1.5;">Enter any .init username — resolves to a wallet address on-chain</span></div>
+        <div style="display:flex;gap:10px;"><span>💬</span><span style="font-size:13px;color:var(--muted);line-height:1.5;">Your message lives in the tx memo — permanently on Initia mainnet</span></div>
+        <div style="display:flex;gap:10px;"><span>⚡</span><span style="font-size:13px;color:var(--muted);line-height:1.5;">Works with Keplr and Leap wallet extensions</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Received Panel -->
+  <div id="receivedPanel" class="hidden">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;">
+      <label class="mono" style="display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;">Check an address</label>
+      <div style="display:flex;gap:10px;">
+        <input id="lookupInput" type="text" placeholder="init1..."
+          style="flex:1;background:var(--input);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;outline:none;"/>
+        <button onclick="loadKudos()"
+          style="background:var(--accent);border:none;border-radius:10px;padding:12px 20px;color:#000;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">
+          Load
+        </button>
+      </div>
+      <button id="myKudosBtn" class="hidden" onclick="loadMyKudos()"
+        class="mono" style="margin-top:10px;background:none;border:none;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;padding:0;">
+        → load my own kudos
+      </button>
+    </div>
+    <div id="kudosList"></div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden" style="position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--green);border-radius:12px;padding:16px 20px;max-width:340px;z-index:100;box-shadow:0 8px 32px rgba(34,197,94,0.15);">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <span>✅</span>
+    <span class="syne" style="font-weight:600;color:var(--green);">Kudos sent!</span>
+    <button onclick="hideToast()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">✕</button>
+  </div>
+  <a id="toastLink" href="#" target="_blank" rel="noopener noreferrer"
+    class="mono" style="font-size:11px;color:var(--accent);text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+    View on InitiaScan ↗
+  </a>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const REST      = 'https://rest.initia.xyz';
+const CHAIN     = 'interwoven-1';
+const EXPLORER  = 'https://scan.initia.xyz/interwoven-1/txs';
+const PREFIX    = 'kudos:';
+
+let connected = false;
+let myAddress = '';
+let myWallet  = null;
+let resolvedTo = '';
+let selectedAmt = '0.1';
+let resolveTimer = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showErr(msg) {
+  document.getElementById('errText').textContent = msg;
+  document.getElementById('errBanner').classList.remove('hidden');
+}
+function hideErr() { document.getElementById('errBanner').classList.add('hidden'); }
+
+function short(addr) { return addr ? addr.slice(0,8)+'...'+addr.slice(-6) : ''; }
+function uinitToInit(u) { return (parseInt(u||0)/1e6).toFixed(4); }
+function timeAgo(ts) {
+  const m = Math.floor((Date.now()-new Date(ts).getTime())/60000);
+  if(m<1) return 'just now'; if(m<60) return m+'m ago';
+  const h=Math.floor(m/60); if(h<24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+}
+
+// ── Connect Wallet ────────────────────────────────────────────────────────────
+async function handleConnect() {
+  const w = window.keplr || window.leap;
+  if (!w) { showErr('No wallet found. Install Keplr or Leap extension first.'); return; }
+  try {
+    await w.enable(CHAIN);
+    const signer   = w.getOfflineSigner(CHAIN);
+    const accounts = await signer.getAccounts();
+    myAddress = accounts[0].address;
+    myWallet  = w;
+    connected = true;
+
+    // Update UI
+    document.getElementById('walletBtn').textContent = short(myAddress);
+    document.getElementById('walletBtn').style.background = 'var(--card)';
+    document.getElementById('walletBtn').style.color = 'var(--muted)';
+    document.getElementById('walletBtn').style.border = '1px solid var(--border)';
+    document.getElementById('walletBtn').style.animation = 'none';
+    document.getElementById('walletBtn').onclick = null;
+
+    document.getElementById('connectHint').classList.add('hidden');
+    document.getElementById('recipientInput').disabled = false;
+    document.getElementById('msgInput').disabled = false;
+    document.querySelectorAll('.amtBtn').forEach(b => b.disabled = false);
+    document.getElementById('sendBtn').textContent = '🫶 Send 0.1 INIT';
+    document.getElementById('myKudosBtn').classList.remove('hidden');
+    hideErr();
+  } catch(e) {
+    showErr('Wallet error: ' + e.message);
+  }
+}
+
+// ── Amount selector ───────────────────────────────────────────────────────────
+function setAmt(v) {
+  selectedAmt = v;
+  document.querySelectorAll('.amtBtn').forEach(b => {
+    const active = b.dataset.v === v;
+    b.style.background = active ? 'var(--adim)'   : 'var(--input)';
+    b.style.border      = active ? '1px solid rgba(245,158,11,0.4)' : '1px solid var(--border)';
+    b.style.color       = active ? 'var(--accent)' : 'var(--muted)';
+  });
+  if (connected) updateSendBtn();
+}
+
+function updateSendBtn() {
+  const btn = document.getElementById('sendBtn');
+  btn.textContent = '🫶 Send ' + selectedAmt + ' INIT';
+}
+
+// ── Recipient / username resolve ──────────────────────────────────────────────
+function onRecipientChange() {
+  clearTimeout(resolveTimer);
+  const val = document.getElementById('recipientInput').value.trim();
+  document.getElementById('resolvedAddr').style.display = 'none';
+  document.getElementById('resolveErr').style.display   = 'none';
+  document.getElementById('resolveIcon').textContent    = '';
+  resolvedTo = '';
+
+  if (!val) return;
+
+  if (!val.includes('.') && val.startsWith('init1')) {
+    // Direct address
+    resolvedTo = val;
+    document.getElementById('resolveIcon').innerHTML = '<span style="color:var(--green)">✓</span>';
+    document.getElementById('resolvedAddr').textContent = '→ ' + short(val);
+    document.getElementById('resolvedAddr').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('resolveIcon').innerHTML = '<span class="spinner"></span>';
+  resolveTimer = setTimeout(() => resolveUsername(val), 600);
+}
+
+async function resolveUsername(username) {
+  const name = username.replace(/\.init$/, '');
+  try {
+    const res  = await fetch(`${REST}/initia/usernames/v1/address/${encodeURIComponent(name)}`);
+    const data = await res.json();
+    if (!data.address) throw new Error('not found');
+    resolvedTo = data.address;
+    document.getElementById('resolveIcon').innerHTML = '<span style="color:var(--green)">✓</span>';
+    document.getElementById('resolvedAddr').textContent = '→ ' + short(data.address);
+    document.getElementById('resolvedAddr').style.display = 'block';
+    document.getElementById('resolveErr').style.display   = 'none';
+  } catch {
+    resolvedTo = '';
+    document.getElementById('resolveIcon').innerHTML = '<span style="color:var(--red)">✗</span>';
+    document.getElementById('resolveErr').textContent = '"' + username + '" not found — is it registered on Initia?';
+    document.getElementById('resolveErr').style.display = 'block';
+    document.getElementById('resolvedAddr').style.display = 'none';
+  }
+}
+
+// ── Send Kudos ────────────────────────────────────────────────────────────────
+async function handleSend() {
+  if (!connected) { handleConnect(); return; }
+  const msg = document.getElementById('msgInput').value.trim();
+  if (!resolvedTo)  { showErr('Enter a valid recipient first.'); return; }
+  if (!msg)         { showErr('Write a message first.'); return; }
+
+  const btn = document.getElementById('sendBtn');
+  btn.innerHTML = '<span class="spinner"></span> Sending...';
+  btn.disabled  = true;
+  hideErr();
+
+  try {
+    const amtUinit = String(Math.round(parseFloat(selectedAmt) * 1_000_000));
+
+    // 1. Get account info
+    const acctRes  = await fetch(`${REST}/cosmos/auth/v1beta1/accounts/${myAddress}`);
+    const acctData = await acctRes.json();
+    const base     = acctData.account?.base_account || acctData.account || {};
+    const accNum   = String(base.account_number || '0');
+    const seq      = String(base.sequence       || '0');
+
+    // 2. Build amino tx
+    const aminoTx = {
+      chain_id:       CHAIN,
+      account_number: accNum,
+      sequence:       seq,
+      fee:  { amount:[{denom:'uinit',amount:'20000'}], gas:'200000' },
+      msgs: [{
+        type: 'cosmos-sdk/MsgSend',
+        value: { from_address:myAddress, to_address:resolvedTo, amount:[{denom:'uinit',amount:amtUinit}] },
+      }],
+      memo: PREFIX + msg,
+    };
+
+    // 3. Sign with Keplr / Leap
+    const signed = await myWallet.signAmino(CHAIN, myAddress, aminoTx);
+    const sig    = signed.signature;
+
+    // 4. Broadcast via legacy amino endpoint
+    const broadcastBody = {
+      tx: {
+        msg:  signed.signed.msgs,
+        fee:  signed.signed.fee,
+        memo: signed.signed.memo,
+        signatures: [sig],
+      },
+      mode: 'sync',
+    };
+
+    const bRes  = await fetch(`${REST}/txs`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(broadcastBody),
+    });
+    const bData = await bRes.json();
+
+    if (bData.code && bData.code !== 0) {
+      throw new Error(bData.raw_log || bData.message || JSON.stringify(bData));
+    }
+    if (!bData.txhash && !bData.tx_response?.txhash) {
+      throw new Error(bData.raw_log || JSON.stringify(bData));
+    }
+
+    // Success
+    const hash = bData.txhash || bData.tx_response?.txhash;
+    document.getElementById('toastLink').href        = `${EXPLORER}/${hash}`;
+    document.getElementById('toastLink').textContent = 'View on InitiaScan: ' + hash.slice(0,20) + '...';
+    document.getElementById('toast').classList.remove('hidden');
+    document.getElementById('msgInput').value   = '';
+    document.getElementById('recipientInput').value = '';
+    document.getElementById('resolvedAddr').style.display = 'none';
+    document.getElementById('resolveIcon').textContent    = '';
+    resolvedTo = '';
+    setTimeout(hideToast, 10000);
+
+  } catch(e) {
+    showErr(e.message || 'Transaction failed');
+  } finally {
+    btn.innerHTML = '🫶 Send ' + selectedAmt + ' INIT';
+    btn.disabled  = false;
+  }
+}
+
+// ── View Received ─────────────────────────────────────────────────────────────
+async function loadKudos() {
+  const addr = document.getElementById('lookupInput').value.trim() || myAddress;
+  if (!addr) { showErr('Enter an address to look up.'); return; }
+  const list = document.getElementById('kudosList');
+  list.innerHTML = '<div style="text-align:center;padding:40px"><span class="spinner"></span><p class="mono" style="font-size:12px;color:var(--muted);margin-top:12px;">Scanning the chain...</p></div>';
+  try {
+    const res  = await fetch(`${REST}/cosmos/tx/v1beta1/txs?events=coin_received.receiver='${addr}'&limit=20&order_by=ORDER_BY_DESC`);
+    const data = await res.json();
+    const txs  = (data.tx_responses || []).filter(tx => tx.tx?.body?.memo?.startsWith(PREFIX));
+    if (!txs.length) {
+      list.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--dim);font-size:14px;"><div style="font-size:32px;margin-bottom:12px;">🫙</div>No kudos yet — go ship something worth appreciating</div>';
+      return;
+    }
+    list.innerHTML = txs.slice(0,10).map(tx => {
+      const amount = tx.tx.body.messages?.[0]?.amount?.[0]?.amount || '0';
+      const msg    = tx.tx.body.memo.slice(PREFIX.length);
+      const from   = tx.tx?.auth_info?.signer_infos?.[0]?.public_key?.key || 'unknown';
+      const hash   = tx.txhash;
+      const ts     = timeAgo(tx.timestamp);
+      return `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span>🫶</span>
+              <span class="mono" style="font-size:11px;color:var(--muted);background:var(--input);padding:2px 8px;border-radius:4px;">${short(from)}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="mono" style="font-size:12px;color:var(--accent);font-weight:500;">+${uinitToInit(amount)} INIT</span>
+              <span class="mono" style="font-size:10px;color:var(--dim);">${ts}</span>
+            </div>
+          </div>
+          <p style="font-size:14px;font-style:italic;color:var(--text);line-height:1.6;border-left:2px solid rgba(245,158,11,0.15);padding-left:12px;">"${msg}"</p>
+          <a href="${EXPLORER}/${hash}" target="_blank" rel="noopener noreferrer"
+            class="mono" style="display:block;margin-top:10px;font-size:10px;color:var(--dim);text-decoration:none;">
+            ${hash.slice(0,28)}... ↗
+          </a>
+        </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = '<p class="mono" style="color:var(--red);font-size:12px;">Failed to load: '+e.message+'</p>';
+  }
+}
+
+function loadMyKudos() {
+  document.getElementById('lookupInput').value = myAddress;
+  loadKudos();
+}
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function switchTab(t) {
+  const isSend = t === 'send';
+  document.getElementById('sendPanel').classList.toggle('hidden', !isSend);
+  document.getElementById('receivedPanel').classList.toggle('hidden', isSend);
+  document.getElementById('tabSend').style.background     = isSend ? 'var(--accent)' : 'transparent';
+  document.getElementById('tabSend').style.color          = isSend ? '#000' : 'var(--muted)';
+  document.getElementById('tabSend').style.fontWeight     = isSend ? '700' : '400';
+  document.getElementById('tabReceived').style.background = isSend ? 'transparent' : 'var(--accent)';
+  document.getElementById('tabReceived').style.color      = isSend ? 'var(--muted)' : '#000';
+  document.getElementById('tabReceived').style.fontWeight = isSend ? '400' : '700';
+}
+
+function hideToast() { document.getElementById('toast').classList.add('hidden'); }
+</script>
+</body>
+</html>
